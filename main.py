@@ -1,30 +1,40 @@
+import argparse
 import os
 
 from dotenv import load_dotenv
 from openai import OpenAI
 
-load_dotenv()
-api_key = os.environ.get("OPENROUTER_API_KEY")
-if api_key == None:
-    raise RuntimeError("incorrect API key")
-
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=api_key,
-)
-
 
 def main():
+    parser = argparse.ArgumentParser(description="Chatbot")
+    parser.add_argument("user_prompt", type=str, help="User prompt")
+    args = parser.parse_args()
+
+    load_dotenv()
+    api_key = os.environ.get("OPENROUTER_API_KEY")
+    if not api_key:
+        raise RuntimeError("OPENROUTER_API_KEY environment variable is not set")
+
+    client = OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=api_key,
+    )
+
     response = client.chat.completions.create(
         model="openrouter/free",
-        messages=[
-            {
-                "role": "user",
-                "content": "Why is Boot.dev such a great place to learn backend development? Use one paragraph maximum.",
-            }
-        ],
+        messages=[{"role": "user", "content": args.user_prompt}],
     )
-    print(response.choices[0].message.content)
+
+    if not response.usage:
+        raise RuntimeError("failed API request: usage metadata missing")
+
+    content = response.choices[0].message.content
+    print(
+        f"Prompt tokens: {response.usage.prompt_tokens}\n"
+        f"Response tokens: {response.usage.completion_tokens}\n"
+        f"Response:\n{content}"
+    )
+
 
 if __name__ == "__main__":
     main()
